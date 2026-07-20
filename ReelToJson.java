@@ -38,7 +38,7 @@ public class ReelToJson extends ReelBaseListener {
     private final Deque<Map<String, Object>> videoStack = new ArrayDeque<>();
     private Map<String, Object> curVideo;
     private Map<String, Object> curScene;
-    private boolean inMeta;
+    private int metaDepth;   // counter (not a flag) so nested meta blocks work
 
     /* ───────────────────────── defines ───────────────────────── */
 
@@ -70,8 +70,8 @@ public class ReelToJson extends ReelBaseListener {
 
     /* ───────────────────────── meta blocks ───────────────────── */
 
-    @Override public void enterMetaBlock(ReelParser.MetaBlockContext ctx) { inMeta = true; }
-    @Override public void exitMetaBlock(ReelParser.MetaBlockContext ctx)  { inMeta = false; }
+    @Override public void enterMetaBlock(ReelParser.MetaBlockContext ctx) { metaDepth++; }
+    @Override public void exitMetaBlock(ReelParser.MetaBlockContext ctx)  { metaDepth--; }
 
     /* ───────────────────────── scenes ────────────────────────── */
 
@@ -105,7 +105,7 @@ public class ReelToJson extends ReelBaseListener {
         @SuppressWarnings("unchecked")
         Map<String, List<Object>> target = (Map<String, List<Object>>)
             (curScene != null ? curScene.get("props")
-             : inMeta ? curVideo.get("meta")
+             : metaDepth > 0 ? curVideo.get("meta")
              : curVideo.get("props"));
         // accumulate duplicates in source order
         target.merge(key, vals, (a, b) -> { a.addAll(b); return a; });
@@ -301,10 +301,19 @@ public class ReelToJson extends ReelBaseListener {
         CharStream input = CharStreams.fromFileName(args[0]);
         ReelLexer lex = new ReelLexer(input);
         ReelParser parser = new ReelParser(new CommonTokenStream(lex));
-        ReelToJson listener = new ReelToJson();
-        ParseTreeWalker.DEFAULT.walk(listener, parser.program());
+        var tree = parser.program();
+
+        // Two passes so forward $refs resolve correctly: pass 1 collects the
+        // full file-scoped define table (every `define`, anywhere in the file);
+        // pass 2 builds the model with that table already complete.
+        ReelToJson pass1 = new ReelToJson();
+        ParseTreeWalker.DEFAULT.walk(pass1, tree);
+        ReelToJson pass2 = new ReelToJson();
+        pass2.defines.putAll(pass1.defines);
+        ParseTreeWalker.DEFAULT.walk(pass2, tree);
+
         List<Object> out = new ArrayList<>();
-        for (Object v : listener.videos) out.add(finalizeVideo((Map<String, Object>) v));
+        for (Object v : pass2.videos) out.add(finalizeVideo((Map<String, Object>) v));
         System.out.println(toJsonString(out));
     }
 }
