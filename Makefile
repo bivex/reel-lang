@@ -13,8 +13,8 @@ ANTLR_JAR := $(wildcard /opt/homebrew/Cellar/antlr/*/antlr-*-complete.jar)
 CP       := $(ANTLR_JAR)
 GEN      := ReelParser.java ReelLexer.java ReelBaseListener.java ReelListener.java
 GEN_AUX  := Reel.tokens Reel.interp ReelLexer.tokens ReelLexer.interp
-EXAMPLES := $(wildcard examples/*.reel)
-BROKEN   := $(wildcard examples/broken/*.reel)
+EXAMPLES := $(shell find examples -name '*.reel' -not -path '*/broken/*')
+BROKEN   := $(shell find examples/broken -name '*.reel')
 ERR_RE   := error|mismatch|expecting|no viable|token recognition|line [0-9]
 
 .PHONY: all test test-errors tree tokens gui json clean

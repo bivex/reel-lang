@@ -218,16 +218,15 @@ public class ReelToJson extends ReelBaseListener {
         catch (NumberFormatException e) { return text; }
     }
 
-    /** Collapse a property's value-list: one value → scalar, unless that
-     *  single value is itself a list literal (e.g. broll), in which case
-     *  keep it; several values → array. Structural lists (scenes/videos)
-     *  are NEVER collapsed — see finalizeVideo. */
+    /** Collapse a property's value-list to a scalar when there is exactly
+     *  one value (so `text: "x"` → "x", and `tags: #a #b` → ["a","b"]
+     *  unwrapped, not [["a","b"]]); several comma-separated values → array.
+     *  Structural lists (scenes/videos) are NEVER collapsed — see finalizeVideo. */
     private static Map<String, Object> collapseProps(Map<String, List<Object>> props) {
         Map<String, Object> out = new LinkedHashMap<>();
         for (var e : props.entrySet()) {
             List<Object> vals = e.getValue();
-            if (vals.size() == 1 && !(vals.get(0) instanceof List<?>)) out.put(e.getKey(), vals.get(0));
-            else out.put(e.getKey(), vals);
+            out.put(e.getKey(), vals.size() == 1 ? vals.get(0) : vals);
         }
         return out;
     }
