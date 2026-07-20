@@ -4,6 +4,7 @@
 #   make test         parse every examples/*.reel, fail on any error
 #   make test-errors  parse every examples/broken/*.reel, fail if none errors
 #   make json F=foo   emit a JSON timeline for examples/foo.reel
+#   make viz          start the web visualizer (http://localhost:8000)
 #   make tree F=foo   parse examples/foo.reel and print the parse tree
 #   make tokens F=foo dump the token stream for examples/foo.reel
 #   make gui F=foo    open the graphical parse-tree viewer
@@ -17,7 +18,7 @@ EXAMPLES := $(shell find examples -name '*.reel' -not -path '*/broken/*')
 BROKEN   := $(shell find examples/broken -name '*.reel')
 ERR_RE   := error|mismatch|expecting|no viable|token recognition|line [0-9]
 
-.PHONY: all test test-errors tree tokens gui json clean
+.PHONY: all test test-errors tree tokens gui json viz clean
 
 all: ReelToJson.class
 
@@ -48,6 +49,10 @@ test-errors: all
 # JSON timeline via the reference listener:  make json F=cookbook
 json: all
 	java -cp "$(CP):." ReelToJson examples/$(F).reel
+
+# Web visualizer (Python stdlib server):  make viz  →  http://localhost:8000
+viz:
+	python3 viz/server.py
 
 # Parse-tree dump for one file:  make tree F=cookbook
 tree: all
